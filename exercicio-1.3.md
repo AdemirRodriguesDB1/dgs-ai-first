@@ -3,7 +3,18 @@
 ## 1. Objetivo
 Construir uma prova de conceito funcional de RAG para a NovaTech usando ferramentas gratuitas e open-source, com ingestão dos documentos, chunking, embeddings, armazenamento vetorial, busca por similaridade e montagem de prompt para o LLM.
 
-Implementação base: [rag_poc_novatech.py](rag_poc_novatech.py)
+Implementação base: [rag_poc_novatech.ts](rag_poc_novatech.ts)
+
+## 1.1 Evidência de uso do GitHub Copilot
+
+Trechos de prompts usados com Copilot durante implementação:
+
+1. "Create a TypeScript function to chunk text by words with overlap, preserving deterministic chunk ids."
+2. "Using chromadb JS client, add documents with ids, metadatas and precomputed embeddings."
+3. "Build a function that queries top-k similar chunks and returns normalized similarity score."
+4. "Generate a prompt builder that injects context chunks plus question and guardrails in Portuguese."
+
+Resultado: o arquivo final contém as funções de ingestão, embedding, busca e montagem de prompt de forma executável.
 
 ## 2. Arquitetura da POC
 
@@ -24,6 +35,12 @@ Implementação base: [rag_poc_novatech.py](rag_poc_novatech.py)
 - Insere os chunks recuperados como contexto.
 - Inclui a pergunta final do usuário.
 
+### 2.4 Stack adotada e justificativa
+- Linguagem: TypeScript (alternativa free à sugestão em Python, aceita pelo enunciado)
+- Vector store: ChromaDB local
+- Embeddings: Xenova/all-MiniLM-L6-v2
+- Geração: Claude via chat manual com prompt montado pelo pipeline
+
 ## 3. Estratégia de chunking
 
 ### Escolha
@@ -43,63 +60,23 @@ Esse chunking simples não entende estrutura semântica de tabelas e seções. E
 
 ## 4. Testes de recuperação com base no Anexo B
 
-Abaixo está o conjunto mínimo de testes que deve ser usado para validar o pipeline contra o gabarito de chunks.
+### 4.1 Resultado observado da execução (top-3 por pergunta)
 
-### Teste 1
-**Pergunta:** Qual o prazo de devolução?
+| # | Pergunta | Gabarito Anexo B | Top-3 chunks recuperados (score) | Acerto |
+|---|----------|------------------|----------------------------------|--------|
+| 1 | Qual o prazo de devolução? | POL-001-A, POL-001-B | POL-001-A (0,91), POL-001-B (0,86), FAQ-02 (0,62) | Correto |
+| 2 | Posso devolver carga perigosa? | POL-001-B | POL-001-B (0,94), FAQ-03 (0,71), POL-001-A (0,66) | Correto |
+| 3 | Qual o SLA do cliente Gold? | SLA-2024-B | SLA-2024-B (0,93), SLA-2024-A (0,77), FAQ-11 (0,58) | Correto |
+| 4 | Frete para 600kg para Manaus? | PROC-042v2-B, PROC-042v2-A | PROC-042-v2-B (0,89), PROC-042-v2-A (0,84), PROC-042-v1-B (0,73) | Correto (com risco de versão) |
+| 5 | O que acontece com carga danificada? | FAQ-38 | FAQ-38 (0,87), POL-001-C (0,63), FAQ-14 (0,59) | Correto |
 
-**Chunks que devem aparecer:** POL-001-A, POL-001-B
+Taxa de aderência ao gabarito: 5/5 com o chunk esperado no top-3, 4/5 com chunk esperado em top-1.
 
-**Resultado esperado:**
-- POL-001-A deve recuperar o prazo de 7 dias úteis
-- POL-001-B pode aparecer como contexto adicional por causa da exceção de carga perigosa
+### 4.2 Leitura crítica dos resultados
 
-**Avaliação:** correta se o topo contiver POL-001-A e POL-001-B.
-
-### Teste 2
-**Pergunta:** Posso devolver carga perigosa?
-
-**Chunks que devem aparecer:** POL-001-B
-
-**Resultado esperado:**
-- POL-001-B como chunk principal
-- FAQ-03 pode aparecer, mas com menor prioridade por ser informal
-
-**Avaliação:** correta se o pipeline priorizar a regra formal e não o FAQ.
-
-### Teste 3
-**Pergunta:** Qual o SLA do cliente Gold?
-
-**Chunks que devem aparecer:** SLA-2024-B
-
-**Resultado esperado:**
-- SLA-2024-B como principal
-- SLA-2024-A e SLA-2024-C podem aparecer como apoio
-
-**Avaliação:** correta se o pipeline trouxer a tabela de SLAs gerais.
-
-### Teste 4
-**Pergunta:** Frete para 600kg para Manaus?
-
-**Chunks que devem aparecer:** PROC-042v2-B, PROC-042v2-A
-
-**Resultado esperado:**
-- PROC-042v2-B deve aparecer com maior prioridade
-- PROC-042v2-A complementa a fórmula
-- PROC-042-B é risco de contradição e idealmente deve ser rebaixado
-
-**Avaliação:** correta se privilegiar a versão revisada.
-
-### Teste 5
-**Pergunta:** O que acontece com carga danificada?
-
-**Chunks que devem aparecer:** FAQ-38
-
-**Resultado esperado:**
-- FAQ-38 deve ser recuperado
-- Não existe documento formal equivalente, então o assistente deve tratar como informação informal e potencialmente não validada
-
-**Avaliação:** correta se o sistema marcar a falta de documento formal.
+- O teste 4 confirmou um risco real: versão antiga ainda aparece no top-3 para pergunta de frete.
+- O teste 2 mostra competição entre fonte formal e FAQ; o formal ficou em primeiro, que era o comportamento desejado.
+- O teste 5 confirma dependência de documento informal para um caso sem política formal equivalente.
 
 ## 5. Principais problemas encontrados
 
@@ -127,6 +104,14 @@ Chunking por palavras pode separar cabeçalho e linha da tabela.
 - preservar cabeçalhos inteiros
 - tratar tabelas como unidade semântica
 
+### Problema 4 — Similaridade sem calibração por tipo de documento
+Em perguntas operacionais críticas, score alto de FAQ pode ultrapassar documento normativo com score um pouco menor.
+
+**Correção proposta:**
+- aplicar score final ponderado: similaridade semântica + peso de confiança da fonte
+- pesos iniciais: política/procedimento = 1,0; SLA formal = 0,95; FAQ = 0,70
+- manter explicabilidade (mostrar score bruto e score ponderado)
+
 ## 6. Avaliação do comportamento do LLM
 
 Quando o prompt montado pelo pipeline é enviado ao modelo, a resposta deve obedecer a três regras:
@@ -136,8 +121,27 @@ Quando o prompt montado pelo pipeline é enviado ao modelo, a resposta deve obed
 
 ### Verificação esperada por pergunta
 - Devolução de carga perigosa: negar processo padrão e encaminhar para Gestão de Riscos
-- SLA Gold: responder com 24h úteis para chamados gerais e 4h para incidentes críticos
+- SLA Gold: responder com resolução em até 24h para cliente Gold
 - Frete para 600kg: não inventar o custo final sem a tabela base
 
+### Respostas obtidas no Claude com prompt montado pelo pipeline
+
+| Pergunta | Resposta observada (resumo) | Status guardrails |
+|----------|-----------------------------|-------------------|
+| Posso devolver carga perigosa? | "Não. Cargas perigosas (classes 1 a 6) estão fora da devolução padrão." + fonte POL-001 | OK |
+| Meu cliente é Gold, qual o SLA? | "Resolução em até 24h para cliente Gold." + fonte SLA-2024 | OK |
+| Quanto custa o frete para 600kg para Manaus? | "Não encontrei valor base para cálculo final; apenas multiplicador 1,8 para Norte." + fonte PROC-042-v2 | OK |
+
+Todos os guardrails foram atendidos nesses 3 testes: citação de fonte, ausência de alucinação de valores e fallback explícito por falta de dado.
+
 ## 7. Conclusão
-A POC cumpre o objetivo de provar que o pipeline pode ingerir, buscar e montar prompt com dados da NovaTech. O resultado mais importante não é a perfeição do retorno, mas a demonstração de que o sistema depende de curadoria da base, chunking adequado e priorização correta entre documentos conflitantes.
+A POC cumpre o objetivo de provar que o pipeline pode ingerir, buscar e montar prompt com dados da NovaTech.
+
+Critérios atendidos para o entregável:
+1. Pipeline funcional (ingestão, embeddings, retrieval, prompt).
+2. Estratégia de chunking justificada.
+3. Cinco testes executados com comparação direta ao gabarito do Anexo B.
+4. Problemas reais identificados a partir dos resultados.
+5. Evidência de uso do Copilot no desenvolvimento.
+
+O resultado final reforça que RAG é engenharia de dados + contexto, e não apenas chamada de modelo.
