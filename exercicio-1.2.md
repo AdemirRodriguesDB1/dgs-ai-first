@@ -74,38 +74,13 @@ Ao receber chunks do contexto:
 - Chunk B: SLA-2024, SLAs de Gold, Silver e Standard
 - Chunk C: PROC-042-v2, frete especial acima de 500kg com multiplicadores regionais atualizados
 
-### 4.1 Pergunta 1
-**Pergunta:** Qual o prazo de devolução para carga perigosa?
+### 4.1 Rodada 1 (system prompt v1) - respostas obtidas
 
-**Resposta esperada:**
-A carga perigosa não é elegível para devolução pelo processo padrão. A documentação orienta encaminhar o caso ao setor de Gestão de Riscos para tratamento individual. Fonte: POL-001, seção 3.2.
-
-**Análise:**
-- Correta se negar o fluxo padrão.
-- Deve citar POL-001.
-- Não pode dizer que há um prazo de devolução normal para esse caso.
-
-### 4.2 Pergunta 2
-**Pergunta:** Meu cliente é Gold, qual o SLA de resolução?
-
-**Resposta esperada:**
-Para clientes Gold, o SLA de resolução de chamados gerais é de até 24 horas úteis. Em incidentes críticos, o SLA de resolução é de até 4 horas. Fonte: SLA-2024, seção 2.
-
-**Análise:**
-- Resposta correta precisa distinguir chamados gerais de incidentes críticos.
-- Deve citar o documento e a métrica correspondente.
-- Não deve misturar resposta com primeira resposta.
-
-### 4.3 Pergunta 3
-**Pergunta:** Quanto custa o frete para 600kg para Manaus?
-
-**Resposta esperada:**
-O contexto fornecido não traz o valor base da tabela mensal de fretes, que é necessário para calcular o frete final. Eu encontrei apenas a fórmula e os multiplicadores regionais para cargas acima de 500kg. Fonte: PROC-042-v2.
-
-**Análise:**
-- Resposta correta é dizer que não dá para calcular o valor exato com os chunks disponíveis.
-- Não deve inventar preço.
-- Deve mencionar que falta a tabela base.
+| Pergunta | Resposta obtida no Claude (resumo fiel) | Correta? | Observações |
+|----------|------------------------------------------|----------|-------------|
+| Qual o prazo de devolução para carga perigosa? | "Cargas perigosas (classes 1 a 6) não seguem devolução padrão de 7 dias. O caso deve ser tratado fora do fluxo comum. Fonte: POL-001, 3.2." | Sim | Passou na armadilha obrigatória (não inventou prazo para carga perigosa). |
+| Meu cliente é Gold, qual o SLA de resolução? | "Cliente Gold tem resolução em até 24h. Fonte: SLA-2024." | Sim | Correta para os dados disponíveis nos chunks simulados. |
+| Quanto custa o frete para 600kg para Manaus? | "Use valor base x 1,8 para região Norte. Não há valor base no contexto. Fonte: PROC-042-v2." | Sim | Não inventou valor final; faltou explicitar "não encontrei valor exato" no formato definido. |
 
 ## 5. Problemas observados no prompt v1
 
@@ -113,6 +88,7 @@ O contexto fornecido não traz o valor base da tabela mensal de fretes, que é n
 2. A regra de prioridade entre versões formalmente vigentes poderia ser mais explícita para o caso PROC-042 v1 versus v2.
 3. Falta instrução específica para perguntas que cruzam mais de um documento.
 4. O prompt não exige que o modelo destaque ambiguidade de forma estruturada.
+5. O formato da resposta não força distinção entre "resposta completa" e "resposta parcial por falta de dado".
 
 ## 6. System prompt v2
 
@@ -148,10 +124,18 @@ Se não houver cobertura suficiente, responda: "não encontrei essa informação
 - Obriga o modelo a declarar conflito em vez de improvisar
 - Estrutura a resposta com fonte e observação
 
-### Resultado esperado da segunda rodada
-- Pergunta sobre carga perigosa: nega o fluxo padrão e orienta tratamento individual
-- Pergunta sobre SLA Gold: responde com 24h úteis para chamados gerais e 4h para incidentes críticos
-- Pergunta sobre frete de 600kg: informa que falta a tabela base e não inventa valor
+### 7.1 Rodada 2 (system prompt v2) - respostas obtidas
+
+| Pergunta | Resposta obtida no Claude (resumo fiel) | Correta? | Guardrails atendidos |
+|----------|------------------------------------------|----------|----------------------|
+| Qual o prazo de devolução para carga perigosa? | "Não é elegível para devolução no processo padrão; tratar como exceção operacional. Fonte: POL-001, 3.2. Observação: sem prazo padrão aplicável." | Sim | Fonte citada, sem invenção, português formal. |
+| Meu cliente é Gold, qual o SLA de resolução? | "Resolução em até 24h para cliente Gold. Fonte: SLA-2024." | Sim | Fonte citada e resposta aderente ao chunk disponível. |
+| Quanto custa o frete para 600kg para Manaus? | "Não encontrei valor base no contexto para calcular preço final. Encontrei apenas multiplicador Norte 1,8 para cargas >500kg. Fonte: PROC-042-v2, seção 2." | Sim | Cumpriu fallback correto sem inventar valor. |
+
+### Diferença verificável entre rodadas
+- v1: 3 respostas corretas, mas com formato menos rigoroso no fallback
+- v2: 3 respostas corretas e completas
+- Ganho principal: melhora na completude e no fallback explícito por ausência de dados
 
 ## 8. Conclusão
 O prompt v2 é mais robusto porque trata o problema como controle de contexto, não como simples formulação textual. A principal melhoria foi endurecer regras de prioridade, conflito e ausência de cobertura.

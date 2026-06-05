@@ -126,3 +126,29 @@ Na prática, isso não é o número ideal. Se muitos chunks forem inseridos, cre
 O projeto é tecnicamente viável, mas somente se for tratado como um problema de engenharia de informação: extração confiável, curadoria da base, versionamento, controle do contexto e política explícita para respostas sem cobertura.
 
 Sem isso, o assistente pode parecer competente, mas produzir respostas inconsistentes ou perigosas para operação. Com um pipeline bem controlado, a meta de um assistente fundamentado em documentação é realista.
+
+## 8. Iteração com Claude (evidência de refinamento)
+
+### 8.1 Prompt inicial enviado ao Claude
+
+"Revise minha análise técnica de viabilidade para um assistente RAG da NovaTech. Identifique estimativas otimistas demais, riscos não cobertos e pontos fracos no gerenciamento de contexto."
+
+### 8.2 Pontos fracos identificados pelo Claude
+
+1. O cálculo de tokens estava conservador, mas faltava deixar explícito um teto operacional para PDFs com estrutura ruim (OCR + tabelas quebradas).
+2. O número teórico de 252 chunks poderia induzir uso excessivo de contexto, sem explicar um limite prático por tipo de pergunta.
+3. Faltava risco específico de "contaminação por versão antiga" no retrieval quando v1 e v2 são semanticamente próximas.
+4. Faltava estratégia para sessões longas no Teams (context rot ao longo da conversa).
+
+### 8.3 Ajustes incorporados após revisão
+
+| Item | Versão inicial | Versão final incorporada |
+|------|----------------|--------------------------|
+| Estimativa da base | Faixa conservadora | Faixa conservadora + teto operacional de 10M-12M tokens |
+| Contexto por query | Cálculo teórico de capacidade | Cálculo teórico + recomendação prática (4-8 simples, 8-12 multi-domínio) |
+| Conflito de versões | Menção geral | Mitigação explícita: metadado de vigência + priorização por versão/dados de validade |
+| Sessões longas | Não detalhado | Estratégia de resumo de histórico e reset por intenção |
+
+### 8.4 Versão final após iteração
+
+Os ajustes desta versão já incluem os quatro pontos de revisão acima nas seções 3, 4, 5 e 6 deste documento.
