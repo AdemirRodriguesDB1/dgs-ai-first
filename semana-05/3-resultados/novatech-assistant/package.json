@@ -1,0 +1,24 @@
+{
+  "name": "novatech-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "lint": "eslint .",
+    "build": "tsc -p .",
+    "mcp:evidence": "powershell -ExecutionPolicy Bypass -File ./scripts/run-mcp-evidence.ps1 -Mode full",
+    "mcp:evidence:git-only": "powershell -ExecutionPolicy Bypass -File ./scripts/run-mcp-evidence.ps1 -Mode git-only",
+    "mcp:evidence:py": "python ./scripts/generate_mcp_evidence.py --full"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server-filesystem": "^2026.1.14",
+    "typescript": "^5.5.0",
+    "vitest": "^0.34.6",
+    "zod": "^3.23.0"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.16.0",
+    "pino": "^8.17.2"
+  }
+}

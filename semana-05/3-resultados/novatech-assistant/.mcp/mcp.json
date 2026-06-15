@@ -1,0 +1,58 @@
+{
+  "mcpServers": {
+    "filesystem-workspace": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        ".\\node_modules\\.bin\\mcp-server-filesystem.cmd",
+        "./src",
+        "./specs",
+        "./skills",
+        "./prompts",
+        "./tests",
+        "./.mcp"
+      ]
+    },
+    "filesystem-docs": {
+      "command": "node",
+      "args": [
+        "./scripts/readonly-filesystem-server.mjs",
+        "./docs/novatech"
+      ]
+    },
+    "filesystem-retrieval": {
+      "command": "node",
+      "args": [
+        "./scripts/readonly-filesystem-server.mjs",
+        "./data/retrieval-corpus"
+      ]
+    },
+    "git": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_server_git",
+        "--repository",
+        "../../../"
+      ]
+    },
+    "memory": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "everything": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-everything"
+      ]
+    }
+  }
+}
