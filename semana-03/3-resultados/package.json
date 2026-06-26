@@ -1,0 +1,19 @@
+{
+  "name": "semana-03-resultados-dev",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^3.17.0",
+    "@azure/functions": "4.0.0",
+    "pino": "^8.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.57",
+    "typescript": "^5.5.4"
+  }
+}
